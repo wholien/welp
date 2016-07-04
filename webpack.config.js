@@ -1,14 +1,14 @@
+require('babel-register');
+
 const NODE_ENV = process.env.NODE_ENV;
 const dotenv = require('dotenv');
 
 const isDev = NODE_ENV === 'development';
-// alternatively we can use process.argv[1]
-// const isDev = (process.argv[1] || '')
-// 			.indexOf('hjs-dev-server') !== -1;
+const isTest = NODE_ENV === 'test';
 
 const webpack = require('webpack');
 const fs = require('fs');
-const path = require('path');
+const path = require('path'),
       join = path.join,
       resolve = path.resolve;
 
@@ -24,7 +24,7 @@ var config = getConfig({
 	in: join(src, 'app.js'),
 	out: dist,
 	clearBeforeBuild: true
-})
+});
 
 // dotenv
 const dotEnvVars = dotenv.config();
@@ -84,6 +84,34 @@ config.postcss = [].concat([
 	require('cssnano')({})
 ])
 // end postcss
+
+// aliases
+config.resolve.root = [src, modules]
+config.resolve.alias = {
+	'css': join(src, 'styles'),
+	'containers': join(src, 'containers'),
+	'components': join(src, 'components'),
+	'utils': join(src, 'utils')
+}
+
+if (isTest) {
+  config.externals = {
+    'react/addons': true,
+    'react/lib/ReactContext': true,
+    'react/lib/ExecutionEnvironment': true
+  };
+
+  config.plugins = config.plugins.filter(p => {
+    const name = p.constructor.toString();
+    const fnName = name.match(/^function (.*)\((.*\))/);
+
+    const idx = [
+      'DedupePlugin',
+      'UglifyJsPlugin'
+    ].indexOf(fnName[1]);
+    return idx < 0;
+  });
+}
 
 module.exports = config;
 
